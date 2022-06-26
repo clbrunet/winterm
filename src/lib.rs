@@ -42,7 +42,7 @@ impl Window {
         self.pixels[y as usize][x as usize] = color;
     }
 
-    pub fn render(&self) -> Result<()> {
+    pub fn draw(&self) -> Result<()> {
         queue!(stdout(), MoveTo(self.origin.0, self.origin.1))?;
         for row_chunk in self.pixels.chunks_exact(2) {
             if let [upper, lower] = row_chunk {

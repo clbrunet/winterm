@@ -53,7 +53,7 @@ fn main() -> Result<()> {
             },
         );
     }
-    window.render()?;
+    window.draw()?;
     thread::sleep(Duration::from_secs(3));
     Ok(())
 }
