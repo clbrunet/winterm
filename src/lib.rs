@@ -18,7 +18,7 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(width: u16, height: u16) -> Result<Window> {
+    pub fn new(width: u16, height: u16) -> Result<Self> {
         let (columns, rows) = terminal::size()?;
         execute!(
             stdout(),
@@ -26,6 +26,7 @@ impl Window {
             terminal::DisableLineWrap,
             cursor::Hide
         )?;
+        terminal::enable_raw_mode()?;
         Ok(Window {
             dimension: Dimension { width, height },
             origin: (
@@ -76,5 +77,6 @@ impl Drop for Window {
             terminal::EnableLineWrap,
             cursor::Show
         );
+        let _ = terminal::disable_raw_mode();
     }
 }
