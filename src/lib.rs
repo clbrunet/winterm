@@ -4,21 +4,17 @@ use crossterm::cursor::{self, MoveDown, MoveLeft, MoveTo};
 use crossterm::style::{Color, Colors, Print, SetBackgroundColor, SetColors, SetForegroundColor};
 use crossterm::{execute, queue, terminal, Result};
 
-#[derive(Debug)]
-struct Dimension {
-    width: u16,
-    height: u16,
-}
+extern crate nalgebra as na;
+use na::{DMatrix, Point2};
 
 #[derive(Debug)]
 pub struct Window {
-    dimension: Dimension,
-    origin: (u16, u16),
-    pixels: Box<[Box<[Color]>]>,
+    origin: Point2<u16>,
+    pixels: DMatrix<Color>,
 }
 
 impl Window {
-    pub fn new(width: u16, height: u16) -> Result<Self> {
+    pub fn new(height: u16, width: u16) -> Result<Self> {
         let (columns, rows) = terminal::size()?;
         execute!(
             stdout(),
@@ -28,39 +24,37 @@ impl Window {
         )?;
         terminal::enable_raw_mode()?;
         Ok(Window {
-            dimension: Dimension { width, height },
-            origin: (
+            origin: Point2::new(
                 (columns as f32 / 2. - width as f32 / 2.) as u16,
                 (rows as f32 / 2. - height as f32 / 4.) as u16,
             ),
-            pixels: vec![vec![Color::Black; width.into()].into_boxed_slice(); height.into()]
-                .into_boxed_slice(),
+            pixels: DMatrix::from_element(height.into(), width.into(), Color::Black),
         })
     }
 
-    pub fn set_pixel(&mut self, x: u16, y: u16, color: Color) {
+    pub fn set_pixel(&mut self, y: u16, x: u16, color: Color) {
         debug_assert_ne!(color, Color::Reset, "Cannot set pixel to Color::Reset");
-        self.pixels[y as usize][x as usize] = color;
+        self.pixels[(y as usize, x as usize)] = color;
     }
 
     pub fn draw(&self) -> Result<()> {
-        queue!(stdout(), MoveTo(self.origin.0, self.origin.1))?;
-        for row_chunk in self.pixels.chunks_exact(2) {
-            if let [upper, lower] = row_chunk {
-                for (foreground, background) in upper.iter().zip(lower.iter()) {
-                    queue!(
-                        stdout(),
-                        SetColors(Colors::new(*foreground, *background)),
-                        Print("▀"),
-                    )?;
-                }
-                queue!(stdout(), MoveDown(1), MoveLeft(self.dimension.width))?;
+        queue!(stdout(), MoveTo(self.origin.x, self.origin.y))?;
+        for (upper, lower) in std::iter::zip(
+            self.pixels.row_iter().step_by(2),
+            self.pixels.row_iter().skip(1).step_by(2),
+        ) {
+            for (foreground, background) in std::iter::zip(&upper, &lower) {
+                queue!(
+                    stdout(),
+                    SetColors(Colors::new(*foreground, *background)),
+                    Print("▀"),
+                )?;
             }
+            queue!(stdout(), MoveDown(1), MoveLeft(self.pixels.ncols() as u16))?;
         }
-        if self.dimension.height % 2 == 1 {
-            let upper = self.pixels.last().unwrap();
+        if self.pixels.nrows() % 2 == 1 {
             queue!(stdout(), SetBackgroundColor(Color::Reset))?;
-            for foreground in upper.iter() {
+            for foreground in &self.pixels.row_iter().last().unwrap() {
                 queue!(stdout(), SetForegroundColor(*foreground), Print("▀"))?;
             }
         }

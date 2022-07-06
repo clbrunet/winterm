@@ -11,8 +11,8 @@ fn main() -> Result<()> {
         .collect::<Vec<u8>>();
     for (x, color_brightness) in vec.iter().enumerate() {
         window.set_pixel(
-            x.try_into().unwrap(),
             0,
+            x.try_into().unwrap(),
             Color::Rgb {
                 r: *color_brightness,
                 g: 0,
@@ -22,8 +22,8 @@ fn main() -> Result<()> {
     }
     for (x, color_brightness) in vec.iter().enumerate() {
         window.set_pixel(
-            x.try_into().unwrap(),
             1,
+            x.try_into().unwrap(),
             Color::Rgb {
                 r: 0,
                 g: *color_brightness,
@@ -33,8 +33,8 @@ fn main() -> Result<()> {
     }
     for (x, color_brightness) in vec.iter().enumerate() {
         window.set_pixel(
-            x.try_into().unwrap(),
             2,
+            x.try_into().unwrap(),
             Color::Rgb {
                 r: 0,
                 g: 0,
@@ -44,8 +44,8 @@ fn main() -> Result<()> {
     }
     for (x, color_brightness) in vec.iter().enumerate() {
         window.set_pixel(
-            x.try_into().unwrap(),
             3,
+            x.try_into().unwrap(),
             Color::Rgb {
                 r: *color_brightness,
                 g: *color_brightness,

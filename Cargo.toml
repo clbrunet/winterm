@@ -8,3 +8,4 @@ license = "MIT"
 
 [dependencies]
 crossterm = "0.23"
+nalgebra = "0.31.0"
