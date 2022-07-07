@@ -32,6 +32,14 @@ impl Window {
         })
     }
 
+    pub fn width(&self) -> u16 {
+        self.pixels.ncols() as u16
+    }
+
+    pub fn height(&self) -> u16 {
+        self.pixels.nrows() as u16
+    }
+
     pub fn set_pixel(&mut self, y: u16, x: u16, color: Color) {
         debug_assert_ne!(color, Color::Reset, "Cannot set pixel to Color::Reset");
         self.pixels[(y as usize, x as usize)] = color;
