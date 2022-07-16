@@ -7,6 +7,10 @@ use crossterm::{execute, queue, terminal, Result};
 extern crate nalgebra as na;
 use na::{DMatrix, Point2};
 
+const UPPER_HALF_BLOCK: &str = "▀";
+const LOWER_HALF_BLOCK: &str = "▄";
+const FULL_BLOCK: &str = "█";
+
 #[derive(Debug)]
 pub struct Window {
     origin: Point2<u16>,
@@ -23,13 +27,15 @@ impl Window {
             cursor::Hide
         )?;
         terminal::enable_raw_mode()?;
-        Ok(Window {
+        let window = Window {
             origin: Point2::new(
                 (columns as f32 / 2. - width as f32 / 2.) as u16,
                 (rows as f32 / 2. - height as f32 / 4.) as u16,
             ),
             pixels: DMatrix::from_element(height.into(), width.into(), Color::Black),
-        })
+        };
+        window.draw_with_border()?;
+        Ok(window)
     }
 
     pub fn width(&self) -> u16 {
@@ -51,22 +57,57 @@ impl Window {
             self.pixels.row_iter().step_by(2),
             self.pixels.row_iter().skip(1).step_by(2),
         ) {
-            for (foreground, background) in std::iter::zip(&upper, &lower) {
+                for (foreground, background) in std::iter::zip(&upper, &lower) {
+                    queue!(
+                        stdout(),
+                        SetColors(Colors::new(*foreground, *background)),
+                        Print(UPPER_HALF_BLOCK),
+                    )?;
+                }
+                queue!(stdout(), MoveDown(1), MoveLeft(self.width() as u16))?;
+            }
+        if self.height() % 2 == 1 {
+            queue!(stdout(), SetForegroundColor(Color::Reset))?;
+            for background in &self.pixels.row_iter().last().unwrap() {
                 queue!(
                     stdout(),
-                    SetColors(Colors::new(*foreground, *background)),
-                    Print("▀"),
+                    SetBackgroundColor(*background),
+                    Print(LOWER_HALF_BLOCK)
                 )?;
-            }
-            queue!(stdout(), MoveDown(1), MoveLeft(self.pixels.ncols() as u16))?;
-        }
-        if self.pixels.nrows() % 2 == 1 {
-            queue!(stdout(), SetBackgroundColor(Color::Reset))?;
-            for foreground in &self.pixels.row_iter().last().unwrap() {
-                queue!(stdout(), SetForegroundColor(*foreground), Print("▀"))?;
             }
         }
         stdout().flush()?;
+        Ok(())
+    }
+
+    fn draw_border(&self) -> Result<()> {
+        queue!(
+            stdout(),
+            MoveTo(self.origin.x - 1, self.origin.y - 1),
+            Print(LOWER_HALF_BLOCK.repeat((self.width() + 2).into()))
+        )?;
+        for y in 0..((self.height() + 1) / 2) {
+            queue!(
+                stdout(),
+                MoveTo(self.origin.x - 1, self.origin.y + y),
+                Print(FULL_BLOCK),
+                MoveTo(self.origin.x + self.width(), self.origin.y + y),
+                Print(FULL_BLOCK),
+            )?;
+        }
+        if self.height() % 2 == 0 {
+            queue!(
+                stdout(),
+                MoveTo(self.origin.x - 1, self.origin.y + (self.height() / 2)),
+                Print(UPPER_HALF_BLOCK.repeat((self.width() + 2).into()))
+            )?;
+        }
+        Ok(())
+    }
+
+    fn draw_with_border(&self) -> Result<()> {
+        self.draw_border()?;
+        self.draw()?;
         Ok(())
     }
 }
