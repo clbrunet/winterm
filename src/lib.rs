@@ -47,7 +47,6 @@ impl Window {
     }
 
     pub fn set_pixel(&mut self, y: u16, x: u16, color: Color) {
-        debug_assert_ne!(color, Color::Reset, "Cannot set pixel to Color::Reset");
         self.pixels[(y as usize, x as usize)] = color;
     }
 
