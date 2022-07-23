@@ -1,6 +1,9 @@
 use std::io::{stdout, Write};
+use std::time::Duration;
 
 use crossterm::cursor::{self, MoveDown, MoveLeft, MoveTo};
+use crossterm::event::KeyModifiers;
+use crossterm::event::{Event, poll, read, Event::Key, KeyCode};
 use crossterm::style::{Color, Colors, Print, SetBackgroundColor, SetColors, SetForegroundColor};
 use crossterm::{execute, queue, terminal, Result};
 
@@ -15,6 +18,7 @@ const FULL_BLOCK: &str = "█";
 pub struct Window {
     origin: Point2<u16>,
     pixels: DMatrix<Color>,
+    last_events: Vec<Event>,
 }
 
 impl Window {
@@ -33,6 +37,7 @@ impl Window {
                 (rows as f32 / 2. - height as f32 / 4.) as u16,
             ),
             pixels: DMatrix::from_element(height.into(), width.into(), Color::Black),
+            last_events: Vec::new(),
         };
         window.draw_with_border()?;
         Ok(window)
@@ -108,6 +113,41 @@ impl Window {
         self.draw_border()?;
         self.draw()?;
         Ok(())
+    }
+
+    pub fn poll_events(&mut self) -> Result<()> {
+        self.last_events.clear();
+        while poll(Duration::from_secs(0))? {
+            self.last_events.push(read()?);
+        }
+        Ok(())
+    }
+
+    pub fn get_key(&mut self, key: KeyCode) -> bool {
+        self.last_events.iter().find(|&event| {
+            if let Key(key_event) = *event {
+                if key_event.code == key {
+                    return true;
+                }
+                if let (KeyCode::Char(char), KeyCode::Char(event_char)) = (key, key_event.code) {
+                    if char.to_lowercase().to_string() == event_char.to_lowercase().to_string() {
+                        return true;
+                    }
+                }
+            }
+            false
+        }).is_some()
+    }
+
+    pub fn get_modifiers(&mut self, modifiers: KeyModifiers) -> bool {
+        self.last_events.iter().find(|&event| {
+            if let Key(key_event) = *event {
+                if key_event.modifiers == modifiers {
+                    return true;
+                }
+            }
+            false
+        }).is_some()
     }
 }
 
