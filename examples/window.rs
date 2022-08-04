@@ -54,6 +54,6 @@ fn main() -> Result<()> {
         );
     }
     window.draw()?;
-    thread::sleep(Duration::from_secs(3));
+    thread::sleep(Duration::from_secs(100));
     Ok(())
 }

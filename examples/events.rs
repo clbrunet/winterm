@@ -1,6 +1,10 @@
-use std::{io::stdout, time::Duration, thread};
+use std::{io::stdout, thread, time::Duration};
 
-use crossterm::{Result, execute, terminal, cursor, event::{KeyCode, KeyModifiers}};
+use crossterm::{
+    cursor,
+    event::{KeyCode, KeyModifiers},
+    execute, terminal, Result,
+};
 use winterm::Window;
 
 fn main() -> Result<()> {
