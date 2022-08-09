@@ -1,59 +1,44 @@
-use std::{thread, time::Duration};
-
-use crossterm::{style::Color, Result};
+use crossterm::{event::KeyCode, style::Color, Result};
+use nalgebra::Vector3;
 use winterm::Window;
 
+fn set_line_gradation(window: &mut Window, y: u16, color: &Vector3<u8>) {
+    for x in 0..window.width() {
+        let multiplier = (x + 1) as f64 / window.width() as f64;
+        window.set_pixel(
+            y,
+            x,
+            Color::Rgb {
+                r: (color.x as f64 * multiplier) as u8,
+                g: (color.y as f64 * multiplier) as u8,
+                b: (color.z as f64 * multiplier) as u8,
+            },
+        );
+    }
+}
+
 fn main() -> Result<()> {
-    let mut window = Window::new(4, 4)?;
-    let vec = (1..=4)
-        .rev()
-        .map(|i| (i as f32 / 4. * u8::MAX as f32) as u8)
-        .collect::<Vec<u8>>();
-    for (x, color_brightness) in vec.iter().enumerate() {
-        window.set_pixel(
-            0,
-            x.try_into().unwrap(),
-            Color::Rgb {
-                r: *color_brightness,
-                g: 0,
-                b: 0,
-            },
-        );
+    let mut window = Window::new(9, 80)?;
+    let colors = [
+        Vector3::new(255, 255, 255),
+        Vector3::new(255, 0, 0),
+        Vector3::new(0, 255, 0),
+        Vector3::new(0, 0, 255),
+        Vector3::new(255, 255, 0),
+        Vector3::new(0, 255, 255),
+        Vector3::new(255, 0, 255),
+        Vector3::new(255, 255, 255),
+        Vector3::new(255, 255, 255),
+    ];
+    for y in 0..window.height() {
+        set_line_gradation(&mut window, y, &colors[y as usize]);
     }
-    for (x, color_brightness) in vec.iter().enumerate() {
-        window.set_pixel(
-            1,
-            x.try_into().unwrap(),
-            Color::Rgb {
-                r: 0,
-                g: *color_brightness,
-                b: 0,
-            },
-        );
+    loop {
+        window.poll_events()?;
+        if window.get_key(KeyCode::Esc) {
+            break;
+        }
+        window.draw()?;
     }
-    for (x, color_brightness) in vec.iter().enumerate() {
-        window.set_pixel(
-            2,
-            x.try_into().unwrap(),
-            Color::Rgb {
-                r: 0,
-                g: 0,
-                b: *color_brightness,
-            },
-        );
-    }
-    for (x, color_brightness) in vec.iter().enumerate() {
-        window.set_pixel(
-            3,
-            x.try_into().unwrap(),
-            Color::Rgb {
-                r: *color_brightness,
-                g: *color_brightness,
-                b: *color_brightness,
-            },
-        );
-    }
-    window.draw()?;
-    thread::sleep(Duration::from_secs(100));
     Ok(())
 }
