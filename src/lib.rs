@@ -53,11 +53,11 @@ impl Window {
     }
 
     fn end_x(&self) -> u16 {
-        self.origin.x as u16 + self.width()
+        (self.origin.x + self.width() as i16) as u16
     }
 
     fn end_y(&self) -> u16 {
-        self.origin.y as u16 + ((self.height() + 1) / 2)
+        (self.origin.y + ((self.height() + 1) / 2) as i16) as u16
     }
 
     pub fn set_pixel(&mut self, y: u16, x: u16, color: Color) {
