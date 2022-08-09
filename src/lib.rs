@@ -4,10 +4,10 @@ use std::{cmp, iter};
 
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::event::KeyModifiers;
-use crossterm::event::{poll, read, Event, Event::Key, KeyCode};
+use crossterm::event::{poll, read, Event, Event::Key, Event::Resize, KeyCode};
 use crossterm::style::{Color, Colors, Print, SetBackgroundColor, SetColors, SetForegroundColor};
 use crossterm::terminal::{
-    DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
+    Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use crossterm::{execute, queue, terminal, Result};
 
@@ -27,19 +27,22 @@ pub struct Window {
 }
 
 impl Window {
+    fn calculate_origin(&mut self) {
+        self.origin.x = (self.terminal_size.x as f32 / 2. - self.width() as f32 / 2.) as i16;
+        self.origin.y = (self.terminal_size.y as f32 / 2. - self.height() as f32 / 4.) as i16;
+    }
+
     pub fn new(height: u16, width: u16) -> Result<Self> {
         let (columns, rows) = terminal::size()?;
         execute!(stdout(), EnterAlternateScreen, DisableLineWrap, Hide)?;
         terminal::enable_raw_mode()?;
-        let window = Window {
+        let mut window = Window {
             terminal_size: Vector2::new(columns, rows),
-            origin: Point2::new(
-                (columns as f32 / 2. - width as f32 / 2.) as i16,
-                (rows as f32 / 2. - height as f32 / 4.) as i16,
-            ),
+            origin: Point2::origin(),
             pixels: DMatrix::from_element(height.into(), width.into(), Color::Black),
             last_events: Vec::new(),
         };
+        window.calculate_origin();
         window.draw_with_border()?;
         Ok(window)
     }
@@ -66,8 +69,8 @@ impl Window {
 
     pub fn draw(&self) -> Result<()> {
         let skipable_rows_count = cmp::max(-self.origin.y, 0) as usize;
+        let skipable_columns_count = cmp::max(-self.origin.x, 0) as usize;
         let start_x = cmp::max(self.origin.x, 0) as u16;
-        let end_x = cmp::min(self.end_x(), self.terminal_size.x) as u16;
         for (y, (upper, lower)) in iter::zip(
             cmp::max(self.origin.y, 0) as u16..cmp::min(self.end_y(), self.terminal_size.y),
             iter::zip(
@@ -78,33 +81,47 @@ impl Window {
                     .step_by(2),
             ),
         ) {
-                queue!(stdout(), MoveTo(start_x, y))?;
-                for (_, (foreground, background)) in
-                    iter::zip(start_x..end_x, iter::zip(&upper, &lower))
-                    {
-                        queue!(
-                            stdout(),
-                            SetColors(Colors::new(*foreground, *background)),
-                            Print(UPPER_HALF_BLOCK),
-                        )?;
-                    }
+            queue!(stdout(), MoveTo(start_x, y))?;
+            for (foreground, background) in iter::zip(
+                upper
+                    .into_iter()
+                    .skip(skipable_columns_count)
+                    .take(self.terminal_size.x as usize),
+                lower
+                    .into_iter()
+                    .skip(skipable_columns_count)
+                    .take(self.terminal_size.x as usize),
+            ) {
+                queue!(
+                    stdout(),
+                    SetColors(Colors::new(*foreground, *background)),
+                    Print(UPPER_HALF_BLOCK),
+                )?;
             }
+        }
         if self.height() % 2 == 1 && self.end_y() <= self.terminal_size.y {
             queue!(
                 stdout(),
                 MoveTo(start_x, self.end_y() - 1),
                 SetForegroundColor(Color::Reset)
             )?;
-            for (_, background) in
-                iter::zip(start_x..end_x, &self.pixels.row_iter().last().unwrap())
-                {
-                    queue!(
-                        stdout(),
-                        SetBackgroundColor(*background),
-                        Print(LOWER_HALF_BLOCK)
-                    )?;
-                }
+            for background in self
+                .pixels
+                .row_iter()
+                .last()
+                .unwrap()
+                .into_iter()
+                .skip(skipable_columns_count)
+                .take(self.terminal_size.x as usize)
+            {
+                queue!(
+                    stdout(),
+                    SetBackgroundColor(*background),
+                    Print(LOWER_HALF_BLOCK)
+                )?;
+            }
         }
+        queue!(stdout(), SetColors(Colors::new(Color::Reset, Color::Reset)))?;
         stdout().flush()?;
         Ok(())
     }
@@ -161,41 +178,42 @@ impl Window {
         self.last_events.clear();
         while poll(Duration::from_secs(0))? {
             self.last_events.push(read()?);
+            if let Resize(columns, rows) = self.last_events.last().unwrap() {
+                self.terminal_size.x = *columns;
+                self.terminal_size.y = *rows;
+                self.calculate_origin();
+                queue!(stdout(), Clear(ClearType::All))?;
+                self.draw_with_border()?;
+            }
         }
         Ok(())
     }
 
     pub fn get_key(&mut self, key: KeyCode) -> bool {
-        self.last_events
-            .iter()
-            .any(|event| {
-                if let Key(key_event) = *event {
-                    if key_event.code == key {
+        self.last_events.iter().any(|event| {
+            if let Key(key_event) = *event {
+                if key_event.code == key {
+                    return true;
+                }
+                if let (KeyCode::Char(char), KeyCode::Char(event_char)) = (key, key_event.code) {
+                    if char.to_lowercase().to_string() == event_char.to_lowercase().to_string() {
                         return true;
                     }
-                    if let (KeyCode::Char(char), KeyCode::Char(event_char)) = (key, key_event.code)
-                    {
-                        if char.to_lowercase().to_string() == event_char.to_lowercase().to_string()
-                        {
-                            return true;
-                        }
-                    }
                 }
-                false
-            })
+            }
+            false
+        })
     }
 
     pub fn get_modifiers(&mut self, modifiers: KeyModifiers) -> bool {
-        self.last_events
-            .iter()
-            .any(|event| {
-                if let Key(key_event) = *event {
-                    if key_event.modifiers == modifiers {
-                        return true;
-                    }
+        self.last_events.iter().any(|event| {
+            if let Key(key_event) = *event {
+                if key_event.modifiers == modifiers {
+                    return true;
                 }
-                false
-            })
+            }
+            false
+        })
     }
 }
 
