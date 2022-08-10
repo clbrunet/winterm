@@ -1,6 +1,6 @@
 [package]
 name = "winterm"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 description= "A Rust library to create a pixelated window inside a terminal"
 repository = "https://github.com/clbrunet/winterm"
@@ -8,4 +8,4 @@ license = "MIT"
 
 [dependencies]
 crossterm = "0.24.0"
-nalgebra = "0.31.0"
+nalgebra = "0.31.1"
