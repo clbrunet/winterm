@@ -43,7 +43,7 @@ impl Window {
             last_events: Vec::new(),
         };
         window.calculate_origin();
-        window.draw_with_border()?;
+        window.redraw_all()?;
         Ok(window)
     }
 
@@ -62,12 +62,14 @@ impl Window {
     fn end_y(&self) -> u16 {
         (self.origin.y + ((self.height() + 1) / 2) as i16) as u16
     }
+}
 
+impl Window {
     pub fn set_pixel(&mut self, y: u16, x: u16, color: Color) {
         self.pixels[(y.into(), x.into())] = color;
     }
 
-    pub fn draw(&self) -> Result<()> {
+    pub fn redraw(&self) -> Result<()> {
         let skipable_rows_count = cmp::max(-self.origin.y, 0) as usize;
         let skipable_columns_count = cmp::max(-self.origin.x, 0) as usize;
         let start_x = cmp::max(self.origin.x, 0) as u16;
@@ -126,7 +128,7 @@ impl Window {
         Ok(())
     }
 
-    fn draw_border(&self) -> Result<()> {
+    fn redraw_border(&self, should_flush: bool) -> Result<()> {
         if self.origin.y > 0 {
             queue!(
                 stdout(),
@@ -165,15 +167,21 @@ impl Window {
                 )
             )?;
         }
+        if should_flush {
+            stdout().flush()?;
+        }
         Ok(())
     }
 
-    fn draw_with_border(&self) -> Result<()> {
-        self.draw_border()?;
-        self.draw()?;
+    fn redraw_all(&self) -> Result<()> {
+        queue!(stdout(), Clear(ClearType::All))?;
+        self.redraw_border(false)?;
+        self.redraw()?;
         Ok(())
     }
+}
 
+impl Window {
     pub fn poll_events(&mut self) -> Result<()> {
         self.last_events.clear();
         while poll(Duration::from_secs(0))? {
@@ -182,8 +190,7 @@ impl Window {
                 self.terminal_size.x = *columns;
                 self.terminal_size.y = *rows;
                 self.calculate_origin();
-                queue!(stdout(), Clear(ClearType::All))?;
-                self.draw_with_border()?;
+                self.redraw_all()?;
             }
         }
         Ok(())

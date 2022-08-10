@@ -38,7 +38,7 @@ fn main() -> Result<()> {
         if window.get_key(KeyCode::Esc) {
             break;
         }
-        window.draw()?;
+        window.redraw()?;
     }
     Ok(())
 }

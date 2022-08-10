@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     for _ in 0..10 {
         window.poll_events()?;
         eprintln!("w {}\r", window.get_key(KeyCode::Char('w')));
-        eprintln!("shift {}\r", window.get_modifiers(KeyModifiers::SHIFT));
+        eprintln!("shift {}\r\n\r", window.get_modifiers(KeyModifiers::SHIFT));
         thread::sleep(Duration::from_secs(1));
     }
     Ok(())
