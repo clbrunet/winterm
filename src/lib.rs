@@ -1,3 +1,7 @@
+//! A Rust library to create a pixelated window inside a terminal.
+//!
+//! It uses [crossterm](https://docs.rs/crossterm/latest/crossterm/) as a backend.
+
 use std::io::{stdout, Write};
 use std::time::Duration;
 use std::{cmp, iter};
@@ -18,6 +22,8 @@ const UPPER_HALF_BLOCK: &str = "▀";
 const LOWER_HALF_BLOCK: &str = "▄";
 const FULL_BLOCK: &str = "█";
 
+/// Window representation.
+/// Used for drawing and events handling.
 #[derive(Debug)]
 pub struct Window {
     terminal_size: Vector2<u16>,
@@ -32,6 +38,7 @@ impl Window {
         self.origin.y = (self.terminal_size.y as f32 / 2. - self.height() as f32 / 4.) as i16;
     }
 
+    /// Creates a window.
     pub fn new(height: u16, width: u16) -> Result<Self> {
         let (columns, rows) = terminal::size()?;
         execute!(stdout(), EnterAlternateScreen, DisableLineWrap, Hide)?;
@@ -47,10 +54,12 @@ impl Window {
         Ok(window)
     }
 
+    /// Gets the window width.
     pub fn width(&self) -> u16 {
         self.pixels.ncols() as u16
     }
 
+    /// Gets the window height.
     pub fn height(&self) -> u16 {
         self.pixels.nrows() as u16
     }
@@ -62,13 +71,13 @@ impl Window {
     fn end_y(&self) -> u16 {
         (self.origin.y + ((self.height() + 1) / 2) as i16) as u16
     }
-}
 
-impl Window {
+    /// Sets a pixel color.
     pub fn set_pixel(&mut self, y: u16, x: u16, color: Color) {
         self.pixels[(y.into(), x.into())] = color;
     }
 
+    /// Redraws the window to the terminal.
     pub fn redraw(&self) -> Result<()> {
         let skipable_rows_count = cmp::max(-self.origin.y, 0) as usize;
         let skipable_columns_count = cmp::max(-self.origin.x, 0) as usize;
@@ -179,9 +188,8 @@ impl Window {
         self.redraw()?;
         Ok(())
     }
-}
 
-impl Window {
+    /// Clears events and polls for newer events.
     pub fn poll_events(&mut self) -> Result<()> {
         self.last_events.clear();
         while poll(Duration::from_secs(0))? {
@@ -196,6 +204,7 @@ impl Window {
         Ok(())
     }
 
+    /// Returns `true` if `key` was read during the last call to [`Window::poll_events`].
     pub fn get_key(&mut self, key: KeyCode) -> bool {
         self.last_events.iter().any(|event| {
             if let Key(key_event) = *event {
@@ -212,6 +221,7 @@ impl Window {
         })
     }
 
+    /// Returns `true` if `modifiers` was read during the last call to [`Window::poll_events`].
     pub fn get_modifiers(&mut self, modifiers: KeyModifiers) -> bool {
         self.last_events.iter().any(|event| {
             if let Key(key_event) = *event {
