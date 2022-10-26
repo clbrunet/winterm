@@ -8,7 +8,7 @@ use std::{cmp, iter};
 
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::event::KeyModifiers;
-use crossterm::event::{poll, read, Event, Event::Key, Event::Resize, KeyCode};
+use crossterm::event::{self, Event, Event::Key, Event::Resize, KeyCode};
 use crossterm::style::{Color, Colors, Print, SetBackgroundColor, SetColors, SetForegroundColor};
 use crossterm::terminal::{
     Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
@@ -192,8 +192,8 @@ impl Window {
     /// Clears events and polls for newer events.
     pub fn poll_events(&mut self) -> Result<()> {
         self.last_events.clear();
-        while poll(Duration::from_secs(0))? {
-            self.last_events.push(read()?);
+        while event::poll(Duration::from_secs(0))? {
+            self.last_events.push(event::read()?);
             if let Resize(columns, rows) = self.last_events.last().unwrap() {
                 self.terminal_size.x = *columns;
                 self.terminal_size.y = *rows;
