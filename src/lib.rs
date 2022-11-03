@@ -1,6 +1,113 @@
+//! # winterm
 //! A Rust library to create a pixelated window inside a terminal.
 //!
-//! It uses [crossterm](https://docs.rs/crossterm/latest/crossterm/) as a backend.
+//! It uses [crossterm] as a backend.
+//!
+//! # Adding winterm as a dependency
+//!
+//! ```sh
+//! cargo add winterm@0.5.0
+//! cargo add crossterm@0.24.0
+//! ```
+//!
+//! # Create a window
+//!
+//! ```
+//! use winterm::Window;
+//!
+//! # let height = 9;
+//! # let width = 16;
+//! let mut window = Window::new(height, width)?;
+//! # Ok::<(), crossterm::ErrorKind>(())
+//! ```
+//!
+//! # Render the next frame
+//!
+//! ```
+//! use crossterm::style::Color;
+//! # use winterm::Window;
+//!
+//! # let mut window = Window::new(9, 16)?;
+//! window.set_pixel(0, 0, Color::Red);
+//! # let y = 1;
+//! # let x = 1;
+//! window.set_pixel(
+//!     y,
+//!     x,
+//!     Color::Rgb {
+//!         r: 0x3E,
+//!         g: 0xB4,
+//!         b: 0x89,
+//!     },
+//! );
+//! window.redraw()?;
+//! # Ok::<(), crossterm::ErrorKind>(())
+//! ```
+//!
+//! # React to events
+//!
+//! ```
+//! use crossterm::event::KeyCode;
+//! # use winterm::Window;
+//!
+//! # let mut window = Window::new(9, 16)?;
+//! window.poll_events()?;
+//! if window.get_key(KeyCode::Esc) {
+//!     // the Escape key has been pressed
+//! }
+//! if window.get_key(KeyCode::Char('w')) {
+//!     // the W key has been pressed
+//! }
+//! # Ok::<(), crossterm::ErrorKind>(())
+//! ```
+//!
+//! # Example
+//!
+//! ```no_run
+//! use crossterm::{event::KeyCode, style::Color, Result};
+//! use winterm::Window;
+//!
+//! fn main() -> Result<()> {
+//!     let mut window = Window::new(9, 16)?;
+//!     let mut color = Color::Black;
+//!     loop {
+//!         window.poll_events()?;
+//!         if window.get_key(KeyCode::Esc) {
+//!             break;
+//!         }
+//!         if window.get_key(KeyCode::Char('n')) {
+//!             color = match color {
+//!                 Color::Black => Color::Red,
+//!                 Color::Red => Color::Rgb {
+//!                     r: 0x3E,
+//!                     g: 0xB4,
+//!                     b: 0x89,
+//!                 },
+//!                 _ => Color::Black,
+//!             }
+//!         }
+//!         for y in 0..window.height() {
+//!             for x in 0..window.width() {
+//!                 window.set_pixel(y, x, color);
+//!             }
+//!         }
+//!         window.redraw()?;
+//!     }
+//!     Ok(())
+//! }
+//! ```
+//!
+//! # Debugging
+//!
+//! Since winterm uses the terminal "alternate screen", it can be complicated to debug using the print functions.
+//!
+//! One way to deal with this problem is to use [stderr] (e.g. [`dbg!`], [`eprintln!`], ...) and redirect it to a file :
+//! ```sh
+//! cargo run 2> logs
+//! ```
+//! You can now use `cat logs` after execution or `tail -f logs` in another terminal to get your output while the code is still running.
+//!
+//! [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
 
 use std::io::{stdout, Write};
 use std::time::Duration;
