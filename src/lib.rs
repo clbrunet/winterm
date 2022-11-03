@@ -6,8 +6,8 @@
 //! # Adding winterm as a dependency
 //!
 //! ```sh
-//! cargo add winterm@0.5.0
-//! cargo add crossterm@0.24.0
+//! cargo add winterm@0.6.0
+//! cargo add crossterm@0.25.0
 //! ```
 //!
 //! # Create a window
